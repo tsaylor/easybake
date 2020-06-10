@@ -3,7 +3,9 @@
 import argparse
 from .easybake import SiteBuilder, serve, clean
 
-parser = argparse.ArgumentParser(prog="easybake", description="Generate a static website")
+parser = argparse.ArgumentParser(
+    prog="easybake", description="Generate a static website"
+)
 parser.add_argument(
     "command", type=str, help="The action to take (e.g. build, serve)",
 )
@@ -18,9 +20,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.command.lower() == "build":
-    sb = SiteBuilder(
-        args.site, template_dir=args.templates, content_dir=args.content
-    )
+    sb = SiteBuilder(args.site, template_dir=args.templates, content_dir=args.content)
     sb.build()
 elif args.command.lower() == "serve":
     serve()

@@ -17,7 +17,7 @@ class SiteBuilder:
         template_dir="templates",
         content_dir="content",
         asset_dir="assets",
-        base_dir=os.getcwd()
+        base_dir=os.getcwd(),
     ):
         self.BASE_DIR = base_dir
         self.sitefile_path = sitefile_path
@@ -27,11 +27,16 @@ class SiteBuilder:
         self.env = Environment(loader=FileSystemLoader(self.BASE_DIR))
 
     def load_datafile(self, datafile):
-        with open(os.path.join(self.content_dir, datafile)) as f:
-            if datafile.endswith("json"):
+        return self.load_json_or_yaml(os.path.join(self.content_dir, datafile))
+
+    def load_json_or_yaml(self, path):
+        with open(path) as f:
+            if path.endswith("json"):
                 data = json.load(f)
-            elif datafile.endswith("yaml"):
-                data = yaml.safe_load(f)
+            elif path.endswith("yaml"):
+                # I can't catch exceptions well in yaml so this at least lets yaml report it better
+                txt = f.read()
+                data = yaml.safe_load(txt)
             else:
                 data = {}
         data = self.process_data(data)
@@ -50,20 +55,21 @@ class SiteBuilder:
 
     def load_sitefile(self, sitefile):
         try:
-            with open(self.sitefile_path) as f:
-                if self.sitefile_path.endswith("json"):
-                    data = json.load(f)
-                elif self.sitefile_path.endswith("yaml"):
-                    data = yaml.load(f)
-                else:
-                    data = None
+            data = self.load_json_or_yaml(self.sitefile_path)
         except (TypeError, FileNotFoundError):
-            print("Can't load sitefile '{}'".format(self.sitefile_path))
+            print(
+                "Can't load sitefile '{}'".format(self.sitefile_path), file=sys.stdout
+            )
             sys.exit(1)
         except json.decoder.JSONDecodeError:
-            print("Provided sitefile '{}' is not valid JSON".format(self.sitefile_path))
+            print(
+                "Provided sitefile '{}' is not valid JSON".format(self.sitefile_path),
+                file=sys.stdout,
+            )
             sys.exit(1)
-        data = self.process_data(data)
+        if data == {}:
+            print("Site file is empty!", file=sys.stdout)
+            sys.exit(1)
         return data
 
     def load_template(self, template):
@@ -78,16 +84,22 @@ class SiteBuilder:
             data.update(obj["data"])
         content = template.render(**data)
         for a in obj.get("assets", []):
-            shutil.copy(os.path.join(self.asset_dir, a), os.path.join("build", "assets", a))
+            shutil.copy(
+                os.path.join(self.asset_dir, a), os.path.join("build", "assets", a)
+            )
         return content
 
     def write_page(self, content):
         url = content["url"]
+        if url.endswith("/"):
+            url += "index.html"
         if url.startswith("/"):
             url = url[1:]
-        dirpath = os.path.join("build", url)
+        urlparts = url.split("/")
+        dirpath = os.path.join("build", *urlparts[:-1])
+        filename = urlparts[-1]
         os.makedirs(dirpath, exist_ok=True)
-        with open(dirpath + "index.html", "w") as f:
+        with open(os.path.join(dirpath, filename), "w") as f:
             f.write(content["rendered"])
 
     def build(self):

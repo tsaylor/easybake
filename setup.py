@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="easybake",
-    version="0.0.1",
+    version="0.0.2",
     author="Tim Saylor",
     author_email="tim.saylor@gmail.com",
     description="A static site builder",
